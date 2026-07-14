@@ -1,46 +1,58 @@
 // animations.js
-// Reveal-on-scroll via IntersectionObserver, plus a scroll-progress bar and
-// a small global API (`window.LihanScroll`) so future advanced animations
-// (parallax, scroll-linked transitions) have something to hook into.
+// Reveal-on-scroll driven by anime.js v4, plus the scroll-progress bar and a
+// small global API (`window.LihanScroll`) so future advanced effects (parallax,
+// scroll-linked transitions) have something to hook into.
+//
+// Elements tagged [data-reveal] start hidden (see animations.css, gated by
+// `html.js`) and animate in — opacity + translateY + blur, with an optional
+// per-element stagger via [data-reveal-delay="N"] (ms) — when the Intersection
+// Observer fires. Reduced-motion users get an instant `.is-revealed` lock.
+import { animate, stagger } from 'animejs';
+
 (() => {
   'use strict';
 
-  const reduceMotion =
-    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const mq = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduce = () => !!(mq && mq.matches);
 
   // Track reduced-motion preference on <html>; CSS selectors can use it too.
-  const mq = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
   const applyMotionClass = () => {
-    document.documentElement.classList.toggle('reduced-motion', !!mq && mq.matches);
+    document.documentElement.classList.toggle('reduced-motion', reduce());
   };
   if (mq) {
     applyMotionClass();
     if (mq.addEventListener) mq.addEventListener('change', applyMotionClass);
   }
 
+  // Animate a single reveal element in. anime.js sets inline styles, so the
+  // CSS hidden state is overridden once this runs.
+  const revealOne = (el) => {
+    if (el.classList.contains('is-revealed')) return;
+    const delay = parseInt(el.getAttribute('data-reveal-delay') || '0', 10) || 0;
+    animate(el, {
+      opacity: [0, 1],
+      translateY: [18, 0],
+      filter: ['blur(5px)', 'blur(0px)'],
+      duration: 760,
+      delay,
+      easing: 'outCubic',
+      onComplete: () => el.classList.add('is-revealed'),
+    });
+  };
+
   const attachRevealObserver = (els) => {
     if (!els || !els.length) return;
-    if (reduceMotion || !('IntersectionObserver' in window)) {
-      els.forEach((el) => {
-        el.classList.add('reveal', 'reveal-in');
-      });
+    if (reduce() || !('IntersectionObserver' in window)) {
+      els.forEach((el) => el.classList.add('is-revealed'));
       return;
     }
 
-    els.forEach((el) => el.classList.add('reveal'));
-
     const observer = new IntersectionObserver(
       (entries) => {
-        // Apply stagger via data-reveal-delay.
         entries.forEach((e) => {
           if (!e.isIntersecting) return;
-          const el = e.target;
-          const delay = parseInt(el.getAttribute('data-reveal-delay') || '0', 10);
-          if (delay > 0) {
-            el.style.setProperty('--reveal-delay', delay + 'ms');
-          }
-          el.classList.add('reveal-in');
-          observer.unobserve(el);
+          revealOne(e.target);
+          observer.unobserve(e.target);
         });
       },
       { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
@@ -49,27 +61,60 @@
     els.forEach((el) => observer.observe(el));
   };
 
-  // Initial scan (parser/router already ran, but in case elements exist).
-  const init = () => {
-    attachRevealObserver(document.querySelectorAll('[data-reveal]'));
+  // Staggered entrance for the skill cards — they aren't [data-reveal] so the
+  // grid reveal (on .section-body) doesn't animate them individually. This
+  // gives the tiles their own cascade when the Skills section scrolls in.
+  const attachSkillCardObserver = () => {
+    const cards = document.querySelectorAll('.skill-card');
+    if (!cards.length) return;
+    if (reduce() || !('IntersectionObserver' in window)) {
+      cards.forEach((c) => (c.style.opacity = '1'));
+      return;
+    }
+    // Start hidden so the cascade has somewhere to come from.
+    cards.forEach((c) => (c.style.opacity = '0'));
+    const grid = cards[0].closest('.skills-grid') || cards[0].parentElement;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          animate(cards, {
+            opacity: [0, 1],
+            translateY: [16, 0],
+            scale: [0.92, 1],
+            duration: 640,
+            delay: stagger(70),
+            easing: 'outCubic',
+          });
+          observer.disconnect();
+        });
+      },
+      { threshold: 0.2 }
+    );
+    if (grid) observer.observe(grid);
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  } else {
-    init();
-  }
+  const scan = () => {
+    attachRevealObserver(document.querySelectorAll('[data-reveal]:not(.is-revealed)'));
+    attachSkillCardObserver();
+  };
 
-  // Catch reveal elements injected after load (router.js adds sections async).
+  // Initial scan (sections injected by router.js may already be present).
+  scan();
+
+  // router.js fires `lihan:ready` once every section has been assembled.
+  document.addEventListener('lihan:ready', scan);
+
+  // Catch reveal elements injected after load (defensive; router is the source).
   if ('MutationObserver' in window) {
     const mo = new MutationObserver(() => {
-      const fresh = document.querySelectorAll('[data-reveal]:not(.reveal)');
+      const fresh = document.querySelectorAll('[data-reveal]:not(.is-revealed)');
       if (fresh.length) attachRevealObserver(fresh);
     });
     mo.observe(document.body, { childList: true, subtree: true });
   }
 
-  // Scroll-progress bar
+  // Scroll-progress bar --------------------------------------------------
   const progressEl = document.getElementById('scrollProgress');
   if (progressEl) {
     const bar = progressEl.querySelector('.scroll-progress-bar');
@@ -84,16 +129,21 @@
     update();
   }
 
+  // Header shadow once the page is scrolled.
+  const header = document.getElementById('header');
+  if (header) {
+    const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
   // Public scroll API for downstream effects.
   window.LihanScroll = (() => {
     let last = { t: performance.now(), y: window.scrollY };
     const tick = () => {
-      const now = performance.now();
-      const y = window.scrollY;
-      last = { t: now, y };
+      last = { t: performance.now(), y: window.scrollY };
     };
     window.addEventListener('scroll', () => {
-      // Update `last` at most once per animation frame.
       if (!window.LihanScroll._ticking) {
         window.requestAnimationFrame(() => {
           tick();

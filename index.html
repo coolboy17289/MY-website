@@ -14,16 +14,23 @@
 
   <title>Lihan Badenhorst</title>
 
+  <script>
+    // Mark <html> as JS-active before paint so the reveal hidden-state
+    // (html.js [data-reveal] { opacity: 0 }) can gate without a flash, and so
+    // no-JS users still see the content.
+    document.documentElement.classList.add('js');
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
 
-  <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="css/animations.css" />
-  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="stylesheet" href="/src/styles.css" />
 </head>
 <body>
+  <div class="aurora" aria-hidden="true"></div>
+
   <a class="skip-link" href="#hero">Skip to content</a>
 
   <div class="loader-wrapper" id="loader" aria-hidden="true">
@@ -64,13 +71,9 @@
   </main>
 
   <footer class="footer">
-    <p>&copy; <span id="year"></span> Lihan Badenhorst. Plain text on purpose.</p>
+    <p>&copy; <span id="year"></span> Lihan Badenhorst. Built with Vite, Tailwind &amp; anime.js.</p>
   </footer>
 
-  <script src="js/parser.js" defer></script>
-  <script src="js/router.js" defer></script>
-  <script src="js/app.js" defer></script>
-  <script src="js/navigation.js" defer></script>
-  <script src="js/animations.js" defer></script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

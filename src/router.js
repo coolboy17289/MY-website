@@ -19,16 +19,16 @@
       title: 'Home',
       eyebrow: 'Welcome',
       icon: 'fa-house',
-      file: 'pages/welcome.txt',
-      kind: 'txt'
+      file: 'pages/welcome.html',
+      kind: 'html'
     },
     {
       slug: 'about',
       title: 'About',
       eyebrow: 'About',
       icon: 'fa-user',
-      file: 'pages/about.txt',
-      kind: 'txt'
+      file: 'pages/about.html',
+      kind: 'html'
     },
     {
       slug: 'skills',
@@ -43,16 +43,16 @@
       title: 'Now',
       eyebrow: 'Now',
       icon: 'fa-clock',
-      file: 'pages/now.txt',
-      kind: 'txt'
+      file: 'pages/now.html',
+      kind: 'html'
     },
     {
       slug: 'robotics-history',
       title: 'Robotics',
       eyebrow: 'Robotics',
       icon: 'fa-microchip',
-      file: 'pages/robotics history.txt',
-      kind: 'txt'
+      file: 'pages/robotics-history.html',
+      kind: 'html'
     }
   ];
 
@@ -71,7 +71,9 @@
     String(html || '').replace(/<h1[^>]*>[\s\S]*?<\/h1>/, '').replace(/^\s+/, '');
 
   const fetchPage = async (page) => {
-    const url = encodeURI(page.file);
+    // public/ is served at the root by Vite, so the file path is a leading
+    // slash off the project root.
+    const url = '/' + page.file.replace(/^\/+/, '');
     const res = await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error('Failed to load ' + page.file + ' (' + res.status + ')');
     return res.text();
