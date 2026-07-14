@@ -1,0 +1,40 @@
+# order: 6
+# title: My Robotics History
+
+# My Robotics History
+
+I started robotics in Year 6 at Taradale Primary School. I had no idea it would become one of the biggest parts of my life. Funny how humans sign up to build robots and end up rebuilding their weekends instead.
+
+===
+
+## Year 6
+
+I began with FIRST LEGO League (FLL), where I learned the basics of programming, robot design, teamwork, and problem-solving. It was my introduction to competitive robotics.
+
+===
+
+## Year 7
+
+I continued competing in FLL, and our team qualified for the New Zealand National Championship. It was my first experience competing at a national level and showed me how much I enjoyed robotics.
+
+===
+
+## Year 8
+
+By Year 8, I had taken on more responsibility. Alongside competing, I started coaching FLL teams and volunteering at robotics events to help younger students learn and enjoy the program.
+
+That same year, I joined FIRST Tech Challenge (FTC). Competing as **Team 30841**, we qualified for the New Zealand National Championship and finished tied for second place.
+
+===
+
+## High School
+
+Now that I'm in high school, I'm continuing to compete in FTC while still being involved in FLL.
+
+For FLL, I may not compete this season. Instead, I'm considering volunteering at the competition to help run the event and support the next generation of teams. Robotics has become more than just competing. It's also about giving back to the community that helped me get started.
+
+===
+
+## Looking Forward
+
+Robotics has taught me far more than how to build robots. It has helped me develop technical skills, leadership, teamwork, and the confidence to mentor others. I'm excited to keep learning, competing, and contributing to the robotics community in the years ahead.
