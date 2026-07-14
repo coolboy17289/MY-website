@@ -4,13 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#B00020" />
-  <meta name="description" content="A small collection of projects, ideas, and things Lihan is building. Each page is a plain text file." />
+  <meta name="description" content="Lihan Badenhorst — software, AI, robotics, and web projects." />
   <meta name="author" content="Lihan Badenhorst" />
 
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://lihan.dev/" />
   <meta property="og:title" content="Lihan Badenhorst" />
-  <meta property="og:description" content="A small collection of projects, ideas, and things Lihan is building." />
+  <meta property="og:description" content="Software, AI, robotics, and web projects." />
 
   <title>Lihan Badenhorst</title>
 
@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="css/responsive.css" />
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
+  <a class="skip-link" href="#hero">Skip to content</a>
 
   <div class="loader-wrapper" id="loader" aria-hidden="true">
     <div class="loader"></div>
@@ -32,13 +32,13 @@
 
   <header class="header" id="header">
     <nav class="navbar container" aria-label="Primary">
-      <a href="#welcome" class="logo">
+      <a href="#hero" class="logo">
         <span class="logo-icon" aria-hidden="true">✦</span>
         <span class="logo-text">Lihan.dev</span>
       </a>
 
       <ul class="nav-menu" id="navMenu" role="list">
-        <!-- Populated by js/router.js from the PAGES list -->
+        <!-- Populated by js/router.js -->
       </ul>
 
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme" aria-pressed="false">
@@ -51,8 +51,16 @@
     </nav>
   </header>
 
-  <main class="main" id="main-content" aria-live="polite">
-    <!-- Page content injected by js/router.js -->
+  <main class="main" id="main-content">
+    <article id="single-page" class="single-page" aria-label="Lihan Badenhorst portfolio and notes">
+      <!-- Sections assembled by js/router.js. Each section has data-section,
+           an id, and a .section-hero / .section-{slug} class. Reveal hooks via
+           [data-reveal] are added by js/router.js to section headers and bodies. -->
+    </article>
+
+    <div class="scroll-progress" id="scrollProgress" aria-hidden="true">
+      <div class="scroll-progress-bar"></div>
+    </div>
   </main>
 
   <footer class="footer">

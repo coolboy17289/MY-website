@@ -1,5 +1,7 @@
 // app.js
-// Theme toggle (localStorage + system preference), footer year, and loader hide.
+// Theme toggle (dark/light), footer year, and the loader hide (which is
+// driven by the `lihan:ready` event from router.js once the single-page has
+// been assembled, with a fallback timeout for safety).
 (() => {
   'use strict';
 
@@ -33,15 +35,17 @@
   const year = document.getElementById('year');
   if (year) year.textContent = new Date().getFullYear();
 
-  // Hide loader once everything is loaded
-  window.addEventListener('load', () => {
+  // Loader hide after the single page is ready.
+  const hideLoader = () => {
     const loader = document.getElementById('loader');
-    if (!loader) return;
+    if (!loader || loader.classList.contains('hidden')) return;
     loader.classList.add('hidden');
-    // Also fade the loader out after the class change so the .hidden transition
-    // has a chance to play.
-    window.setTimeout(() => {
-      loader.style.display = 'none';
-    }, 600);
-  });
+    setTimeout(() => { loader.style.display = 'none'; }, 600);
+  };
+
+  // Router.js fires `lihan:ready` once every section has been assembled.
+  document.addEventListener('lihan:ready', hideLoader);
+
+  // Fallback in case the event never fires (network error / file:// browsing).
+  setTimeout(hideLoader, 5000);
 })();

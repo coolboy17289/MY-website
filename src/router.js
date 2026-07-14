@@ -1,66 +1,80 @@
 // router.js
-// Hash-based single-page router. Owns the canonical page list, builds the
-// navigation, fetches the requested page's .txt file, parses it, and renders
-// the result into <main id="main-content">.
+// Bulk assembler: loads every page in /pages once at boot, then stacks the
+// results into a single-page <article id="single-page">. Each section has its
+// own id, data-section, and reveal hooks so downstream scripts can drive
+// scroll animations, scroll-spy, parallax, etc.
 //
-// Routing model: hash-only (e.g. `#about`). Works on any static host without
-// server rewrites, and matches the welcome.txt instruction that "the filename
-// becomes the page's address".
+// Loads happen in parallel (Promise.allSettled) so a slow page doesn't block
+// the others. Failures are rendered as inline error sections with a friendly
+// message rather than crashing the whole site.
 (() => {
   'use strict';
 
-  // The canonical page list. Add new entries here when you add new .txt files
-  // to /pages — slug is what appears in the URL, file is the path that gets
-  // fetched (URL-encoded automatically by encodeURI).
+  // Canonical page list. Order here = how the sections stack on the page.
+  // Add a new section by adding an entry; the train of header, content, and
+  // nav-link works out automatically.
   const PAGES = [
     {
-      slug: 'welcome',
-      title: 'Welcome',
+      slug: 'hero',
+      title: 'Home',
+      eyebrow: 'Welcome',
       icon: 'fa-house',
-      file: 'pages/welcome.txt'
+      file: 'pages/welcome.txt',
+      kind: 'txt'
     },
     {
       slug: 'about',
       title: 'About',
+      eyebrow: 'About',
       icon: 'fa-user',
-      file: 'pages/about.txt'
+      file: 'pages/about.txt',
+      kind: 'txt'
+    },
+    {
+      slug: 'skills',
+      title: 'Skills',
+      eyebrow: 'Skills',
+      icon: 'fa-code',
+      file: 'pages/skills.html',
+      kind: 'html'
     },
     {
       slug: 'now',
       title: 'Now',
+      eyebrow: 'Now',
       icon: 'fa-clock',
-      file: 'pages/now.txt'
+      file: 'pages/now.txt',
+      kind: 'txt'
     },
     {
       slug: 'robotics-history',
       title: 'Robotics',
+      eyebrow: 'Robotics',
       icon: 'fa-microchip',
-      file: 'pages/robotics history.txt'
+      file: 'pages/robotics history.txt',
+      kind: 'txt'
     }
   ];
 
-  const DEFAULT_SLUG = 'welcome';
+  const escapeText = (s) =>
+    String(s).replace(/[<>&\"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  const escapeAttr = escapeText;
 
-  // Derive a URL slug from a .txt filename. Used as a fallback so any file
-  // added later in /pages can be addressed by its own filename.
-  const slugFromFilename = (name) =>
-    name
-      .replace(/\.txt$/i, '')
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
-
-  const getRequestedSlug = () => {
-    const raw = (location.hash || '').replace(/^#\/?/, '').trim().toLowerCase();
-    return raw || DEFAULT_SLUG;
+  const deriveSectionTitle = (slug, html) => {
+    if (!html) return PAGES.find((p) => p.slug === slug)?.title || slug;
+    const m = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+    if (!m) return PAGES.find((p) => p.slug === slug)?.title || slug;
+    return m[1].replace(/<[^>]+>/g, '').trim();
   };
 
-  const findPage = (slug) => PAGES.find((p) => p.slug === slug) || null;
+  const stripFirstH1 = (html) =>
+    String(html || '').replace(/<h1[^>]*>[\s\S]*?<\/h1>/, '').replace(/^\s+/, '');
 
-  const setActiveNav = (slug) => {
-    document.querySelectorAll('[data-slug]').forEach((el) => {
-      el.classList.toggle('active', el.getAttribute('data-slug') === slug);
-    });
+  const fetchPage = async (page) => {
+    const url = encodeURI(page.file);
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (!res.ok) throw new Error('Failed to load ' + page.file + ' (' + res.status + ')');
+    return res.text();
   };
 
   const buildNav = () => {
@@ -69,97 +83,166 @@
     list.innerHTML = PAGES.map(
       (p) =>
         '<li>' +
-          '<a href="#' + escapeAttr(p.slug) + '" class="nav-link" data-slug="' + escapeAttr(p.slug) + '">' +
-            '<i class="fas ' + escapeAttr(p.icon) + '" aria-hidden="true"></i>' +
-            '<span>' + escapeText(p.title) + '</span>' +
-          '</a>' +
+        '<a href="#' + escapeAttr(p.slug) + '" class="nav-link" data-section="' + escapeAttr(p.slug) + '">' +
+        '<i class="fas ' + escapeAttr(p.icon) + '" aria-hidden="true"></i>' +
+        '<span>' + escapeText(p.title) + '</span>' +
+        '</a>' +
         '</li>'
     ).join('');
   };
 
-  const escapeText = (s) =>
-    String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  const buildSectionHtml = (page, processed, title) => {
+    const isHero = page.slug === 'hero';
+    const eyebrow = page.eyebrow || page.title;
 
-  const escapeAttr = escapeText;
-
-  // Only one render is allowed in flight at a time. If the user navigates while
-  // a previous fetch hasn't resolved, we abort it so the new render writes the
-  // latest content (not stale content from the older request).
-  let inflight = null;
-
-  const renderPage = async () => {
-    const main = document.getElementById('main-content');
-    if (!main) return;
-
-    // Cancel any prior render
-    if (inflight) inflight.abort();
-    const controller = new AbortController();
-    inflight = controller;
-
-    const requested = getRequestedSlug();
-    const page = findPage(requested) || findPage(DEFAULT_SLUG);
-
-    setActiveNav(page.slug);
-
-    main.classList.add('is-loading');
-    main.setAttribute('aria-busy', 'true');
-
-    try {
-      const url = encodeURI(page.file);
-      const res = await fetch(url, { cache: 'no-cache', signal: controller.signal });
-      if (!res.ok) throw new Error('Failed to load ' + page.file + ' (' + res.status + ')');
-      const text = await res.text();
-      if (!window.LihanParse) throw new Error('Parser not loaded.');
-
-      // Even though we received a body, check again that we weren't superseded.
-      if (controller.signal.aborted) return;
-
-      const body = window.LihanParse.parse(text);
-      main.innerHTML =
-        '<article class="page page-' + escapeAttr(page.slug) + '">' +
-          body +
-        '</article>';
-
-      document.title = page.title + ' — Lihan.dev';
-
-      // Reset scroll for the new page
-      window.scrollTo(0, 0);
-    } catch (err) {
-      // Silently swallow our own aborts — they are expected on rapid nav.
-      if (err && err.name === 'AbortError') return;
-      main.innerHTML =
-        '<article class="page page-error">' +
-          '<h1>Could not load this page</h1>' +
-          '<p>' + escapeText(err && err.message ? err.message : String(err)) + '</p>' +
-        '</article>';
-      document.title = 'Error — Lihan.dev';
-    } finally {
-      if (inflight === controller) inflight = null;
-      main.removeAttribute('aria-busy');
-      // Trigger fade-in on the next frame so the transition runs. Skip if we
-      // were aborted — the new render will own the loading state.
-      if (!controller.signal.aborted) {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => main.classList.remove('is-loading'));
-        });
-      }
+    if (isHero) {
+      return (
+        '<section id="' + escapeAttr(page.slug) + '" ' +
+              'class="section section-hero" ' +
+              'data-section="' + escapeAttr(page.slug) + '">' +
+          '<div class="section-inner hero-inner">' +
+            '<header class="hero-header" data-reveal data-reveal-delay="0">' +
+              '<p class="hero-eyebrow">' + escapeText(eyebrow) + '</p>' +
+              '<h1 class="hero-name">' + escapeText(title) + '</h1>' +
+              '<div class="hero-meta" data-reveal data-reveal-delay="120">' +
+                '<span class="hero-meta-dot"></span>' +
+                '<span class="hero-meta-text">Software · AI · Robotics · Web</span>' +
+              '</div>' +
+            '</header>' +
+            '<div class="hero-body" data-reveal data-reveal-delay="220">' +
+              processed +
+            '</div>' +
+            '<div class="hero-scroll-hint" data-reveal data-reveal-delay="320">' +
+              '<span>Scroll</span>' +
+              '<span class="hero-scroll-arrow" aria-hidden="true">&darr;</span>' +
+            '</div>' +
+          '</div>' +
+        '</section>'
+      );
     }
+
+    return (
+      '<section id="' + escapeAttr(page.slug) + '" ' +
+            'class="section section-' + escapeAttr(page.slug) + '" ' +
+            'data-section="' + escapeAttr(page.slug) + '">' +
+        '<div class="section-inner">' +
+          '<header class="section-header" data-reveal>' +
+            '<p class="section-eyebrow">' + escapeText(eyebrow) + '</p>' +
+            '<h2 class="section-title">' + escapeText(title) + '</h2>' +
+          '</header>' +
+          '<div class="section-body" data-reveal data-reveal-delay="80">' +
+            processed +
+          '</div>' +
+        '</div>' +
+      '</section>'
+    );
   };
 
-  // Public surface
-  window.LihanPages = PAGES;
-  window.LihanRouter = {
-    slugFromFilename,
-    PAGES,
-    DEFAULT_SLUG
+  const setActiveNav = (slug) => {
+    document.querySelectorAll('.nav-link[data-section]').forEach((el) => {
+      const isActive = el.getAttribute('data-section') === slug;
+      el.classList.toggle('active', isActive);
+      if (isActive) el.setAttribute('aria-current', 'true');
+      else el.removeAttribute('aria-current');
+    });
   };
 
-  const init = () => {
+  const setupScrollSpy = () => {
+    const sections = Array.from(document.querySelectorAll('.section[data-section]'));
+    if (!sections.length) return;
+
+    if (!('IntersectionObserver' in window)) {
+      // Fallback: highlight based on scroll position closest to top.
+      const onScroll = () => {
+        let best = null;
+        for (const s of sections) {
+          const top = s.getBoundingClientRect().top;
+          if (best === null || top < best.top) best = { slug: s.dataset.section, top };
+          if (top >= 0) break;
+        }
+        if (best) setActiveNav(best.slug);
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+      return;
+    }
+
+    // Pick the section closest to the viewport's top-third. We track
+    // intersecting entries; the one with the highest intersection ratio wins.
+    let activeSlug = null;
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          const slug = entry.target.getAttribute('data-section');
+          if (slug !== activeSlug) {
+            activeSlug = slug;
+            setActiveNav(slug);
+            document.title = (entry.target.dataset.title || sectionTitle(slug)) + ' — Lihan.dev';
+          }
+        }
+      }
+    }, { rootMargin: '-30% 0px -50% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] });
+
+    sections.forEach((s) => observer.observe(s));
+  };
+
+  const sectionTitle = (slug) => {
+    const el = document.getElementById(slug);
+    if (!el) return slug;
+    const h = el.querySelector('.section-title, .hero-name');
+    return h ? h.textContent.trim() : slug;
+  };
+
+  const init = async () => {
     buildNav();
-    renderPage();
+
+    const article = document.getElementById('single-page');
+    if (!article) return;
+
+    const results = await Promise.allSettled(PAGES.map(fetchPage));
+
+    PAGES.forEach((page, i) => {
+      const r = results[i];
+      let processed;
+      if (r.status !== 'fulfilled') {
+        const err = r.reason && r.reason.message ? r.reason.message : String(r.reason);
+        processed = '<p class="section-error">Could not load this section: ' + escapeText(err) + '</p>';
+      } else if (page.kind === 'html') {
+        processed = r.value;
+      } else if (window.LihanParse) {
+        try {
+          processed = window.LihanParse.parse(r.value);
+        } catch (parseErr) {
+          processed = '<p class="section-error">Parser error: ' + escapeText(parseErr.message || String(parseErr)) + '</p>';
+        }
+      } else {
+        processed = '<p class="section-error">Parser not loaded.</p>';
+      }
+
+      const title = deriveSectionTitle(page.slug, processed);
+      const bodyHtml = stripFirstH1(processed);
+
+      // Record the resolved title on the section dataset so scroll-spy can
+      // use it for document.title without re-querying.
+      const inner = buildSectionHtml(page, bodyHtml, title);
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = inner;
+      const sectionEl = wrapper.firstElementChild;
+      if (sectionEl) {
+        sectionEl.dataset.title = title;
+        article.appendChild(sectionEl);
+      }
+    });
+
+    setupScrollSpy();
+    setActiveNav('hero');
+
+    document.dispatchEvent(new CustomEvent('lihan:ready'));
   };
 
-  window.addEventListener('hashchange', renderPage);
+  // Expose for debugging / advanced effects.
+  window.LihanPages = PAGES;
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init, { once: true });
   } else {

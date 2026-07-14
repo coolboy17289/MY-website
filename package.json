@@ -1,5 +1,20 @@
 {
+  "name": "lihan-website",
+  "private": true,
+  "type": "module",
+  "version": "2.0.0",
+  "description": "Lihan Badenhorst's personal website — a plain-text-page SPA built with Vite, Tailwind v4 and anime.js v4.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "animejs": "^4.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "tailwindcss": "^4.1.0",
+    "vite": "^6.0.0"
   }
 }

@@ -1,52 +1,101 @@
 /* animations.css
- * Page transition + reveal-on-scroll keyframes.
- * The JS-side reveal logic lives in js/animations.js; this file only defines
- * how a "reveal" element should animate when the .reveal-in class is added.
+ * Reveal-on-scroll keyframes used by js/animations.js.
+ *
+ * Elements with [data-reveal] start invisible + offset by 14px, then have
+ * `.reveal-in` added when they enter the viewport, triggering the transition.
+ * Per-element delay via [data-reveal-delay="N"] (ms) for staggered sequences.
  */
 
 @keyframes revealUp {
   from {
     opacity: 0;
     transform: translateY(14px);
+    filter: blur(4px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+    filter: blur(0);
   }
 }
 
-/* .reveal starts hidden; the IntersectionObserver in js/animations.js adds
- * .reveal-in once an element enters the viewport, kicking off the animation. */
+@keyframes revealIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .reveal {
   opacity: 0;
   transform: translateY(14px);
-  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+  transition:
+    opacity 0.7s var(--ease) var(--reveal-delay, 0ms),
+    transform 0.7s var(--ease) var(--reveal-delay, 0ms),
+    filter 0.7s var(--ease) var(--reveal-delay, 0ms);
   will-change: opacity, transform;
 }
 
 .reveal-in {
   opacity: 1;
   transform: translateY(0);
+  filter: blur(0);
 }
 
-/* A short delay so cascading paragraphs and headings feel sequenced. */
-.page h1 + p.reveal,
-.page h2 + p.reveal,
-.page h1 + ul.reveal { transition-delay: 0.05s; }
-.page p.reveal + p.reveal { transition-delay: 0.05s; }
-.page p.reveal + ul.reveal,
-.page ul.reveal + p.reveal { transition-delay: 0.04s; }
+/* Stagger groups: when multiple .reveal elements share a parent, the
+ * second/third/fourth get incremental delays for an emphasised cascade. */
+.single-page .section-body > .reveal:nth-of-type(2),
+.single-page .section-body > .reveal:nth-of-type(3) {
+  --reveal-delay: 60ms;
+}
 
-/* Reduced-motion: skip all transitions, no fade. */
+.single-page .section-body > .reveal:nth-of-type(4),
+.single-page .section-body > .reveal:nth-of-type(5) {
+  --reveal-delay: 120ms;
+}
+
+.single-page .section-body > .reveal:nth-of-type(6),
+.single-page .section-body > .reveal:nth-of-type(n+7) {
+  --reveal-delay: 180ms;
+}
+
+/* Smooth-clicking feedback for nav and buttons */
+@keyframes navTap {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.nav-link:active {
+  animation: navTap 0.25s var(--ease);
+}
+
+/* Reduced motion --------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   .reveal,
   .reveal-in {
     opacity: 1 !important;
     transform: none !important;
+    filter: none !important;
     transition: none !important;
   }
-  .main.is-loading .page {
-    opacity: 1;
-    transform: none;
+
+  .hero-scroll-arrow,
+  .hero-meta-dot {
+    animation: none !important;
   }
+
+  .scroll-progress-bar {
+    transition: none !important;
+  }
+}
+
+html.reduced-motion .reveal,
+html.reduced-motion .reveal-in {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  transition: none !important;
 }

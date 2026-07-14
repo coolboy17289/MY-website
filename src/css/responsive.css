@@ -1,12 +1,16 @@
 /* responsive.css
- * The browser-target widths and any layout that needs to change at them.
+ * Breakpoints for the single-page layout.
  */
 
 @media (max-width: 1024px) {
-  .main {
-    width: min(720px, 94%);
-    padding-top: 120px;
+  .section-inner {
+    width: min(var(--max-content), 94%);
   }
+  .hero-inner {
+    width: min(var(--max-hero), 94%);
+  }
+  .section { padding: 90px 0; }
+  .section-hero { padding: 140px 0 110px; }
 }
 
 @media (max-width: 720px) {
@@ -57,30 +61,47 @@
 
   .theme-toggle { margin-right: 0.25rem; }
 
-  .main {
-    padding-top: 110px;
-    width: 92%;
-  }
+  .section { padding: 70px 0; }
+  .section-hero { padding: 110px 0 90px; min-height: 70vh; }
 
-  .page h1 { font-size: 1.85rem; }
-  .page h2 { font-size: 1.35rem; }
+  .hero-name { font-size: clamp(2.4rem, 12vw, 3.4rem); }
+  .section-title { font-size: 1.85rem; }
+
+  .skills-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .skill-card { height: 130px; }
+
+  .scroll-progress { height: 2px; }
 }
 
 @media (max-width: 420px) {
+  .section { padding: 56px 0; }
+  .section-hero { padding: 96px 0 72px; }
+
+  .skills-grid { grid-template-columns: 1fr; }
+
   .btn-link {
     width: 100%;
     justify-content: flex-start;
     margin-right: 0;
   }
+
+  .hero-name { font-size: clamp(2rem, 10vw, 2.6rem); }
+  .hero-body { font-size: 1rem; }
 }
 
 /* Reduced motion --------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
   html {
     scroll-behavior: auto;
   }
