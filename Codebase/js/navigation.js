@@ -1,58 +1,36 @@
-// Mobile menu
+// navigation.js
+// Mobile menu behaviour: open/close, close on link tap, close on Escape.
 (() => {
+  'use strict';
+
   const toggle = document.getElementById('mobileMenuToggle');
-  const menu   = document.getElementById('navMenu');
+  const menu = document.getElementById('navMenu');
   if (!toggle || !menu) return;
 
-  toggle.addEventListener('click', () => {
-    const open = menu.classList.toggle('open');
+  const setOpen = (open) => {
+    menu.classList.toggle('open', open);
     toggle.setAttribute('aria-expanded', String(open));
+  };
+
+  toggle.addEventListener('click', () => {
+    setOpen(!menu.classList.contains('open'));
   });
 
-  // Close menu when a link is tapped (mobile)
-  menu.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', () => {
-      if (menu.classList.contains('open')) {
-        menu.classList.remove('open');
-        toggle.setAttribute('aria-expanded', 'false');
-      }
-    });
+  // Close when any nav link is tapped (especially useful on mobile).
+  menu.addEventListener('click', (e) => {
+    const link = e.target.closest('.nav-link');
+    if (link && menu.classList.contains('open')) setOpen(false);
   });
 
-  // Close on Escape + return focus
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && menu.classList.contains('open')) {
-      menu.classList.remove('open');
-      toggle.setAttribute('aria-expanded', 'false');
+      setOpen(false);
       toggle.focus();
     }
   });
-})();
 
-// Active section on scroll
-(() => {
-  const sections = document.querySelectorAll('main section[id]');
-  const links    = document.querySelectorAll('.nav-link');
-  if (!sections.length) return;
-
-  const setActive = (id) => {
-    links.forEach(l => l.classList.toggle('active', l.dataset.section === id));
-  };
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
-  }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
-
-  sections.forEach(s => observer.observe(s));
-})();
-
-// Header shadow on scroll
-(() => {
-  const header = document.getElementById('header');
-  if (!header) return;
-  const onScroll = () => {
-    header.style.boxShadow = window.scrollY > 8 ? '0 4px 20px rgba(0,0,0,0.25)' : 'none';
-  };
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
+  // Close when the URL fragment changes (back/forward, direct link, etc.).
+  window.addEventListener('hashchange', () => {
+    if (menu.classList.contains('open')) setOpen(false);
+  });
 })();
